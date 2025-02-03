@@ -1,0 +1,21 @@
+Document Vector:
+V(d0): { tf_idf(t, d0), tf_idf(t1, d0), tf_idf(t2, d0), tf_idf(t3, d0), ...}
+V(d1): { tf_idf(t, d1), tf_idf(t1, d1), tf_idf(t2, d1), tf_idf(t3, d1), ...}
+
+tf_idf(t, Di) = tf(T, Di) * idf(t)
+    -> tf(t, Di) = Math.sqrt(freq)
+    -> idf(t) = log( TotalDocs / D(t))
+
+
+Structure:
+
+Vector:
+ClassicSimilarity
+
+Doc Vector: <Term, weight> dv
+<Term, weight> buildDV(Index_reader, FieldName)
+
+Query Vector: <Term, weight> qv
+<Term, weight> buildQV(Index_reader, FieldName)
+
+Cosine Similarity = DV dot QV -> DV_0.weight * QV_0.weight + DV_1.weight * DV_1.weight ...

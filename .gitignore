@@ -40,3 +40,6 @@ build/
 
 ### Lucene ###
 lucene-9.12.1/
+
+### Indices ###
+indices/
