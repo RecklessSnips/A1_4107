@@ -11,10 +11,7 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.StringReader;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -42,6 +39,9 @@ public class Vector {
     // Total number of documents: 5183
     private final int TOTALDOCS;
 
+    // Writer
+    private BufferedWriter writer;
+
     public Vector(Analyzer analyzer){
         initialize();
         documentVector = new HashMap<>();
@@ -56,7 +56,13 @@ public class Vector {
             // Prepare reader
             indexReader = DirectoryReader.open(directory);
         }catch (IOException e){
-            e.printStackTrace();
+            System.out.println("Error while opening file");
+        }
+
+        try{
+            writer = Files.newBufferedWriter(Paths.get("src/main/java/results.csv"));
+        }catch (IOException e){
+            System.out.println("Error while opening writer, did you forget to specify the file name?");
         }
     }
 
@@ -153,7 +159,7 @@ public class Vector {
         try {
             // Retrieve tokenized query
             List<String> tokens = tokenizeQuery(query);
-            System.out.println(query);
+            System.out.println("Query: " + query);
 
             // Calculate each token's tf_idf
             for(String token: tokens){
@@ -308,25 +314,18 @@ public class Vector {
         String answer = answerMap.get(answerID);
         System.out.println("Answer: " + answer);
 
-        System.out.println("query_id\t" +
-                            "Q0\t" +
-                            "doc_id\t" +
-                            "rank\t" +
-                            "score\t" +
-                            "tag\t");
-
         // A counter to limit how many results to be shown (work with the parameter limit)
-        int counter = 1;
+        int rank = 1;
         /*
          A counter to track the rank of the answer (if found),
          indicating the position of the answer in the sorted list displayed from highest to lowest similarity score.
          */
-        int rank = 0;
+        int position = 0;
         // Sorted similarities
         LinkedHashMap<Integer, Double> similarities = computeCosineSimilarity(dv, qv);
         for (Map.Entry<Integer, Double> entry : similarities.entrySet()){
-            if(counter > limit) break;
-            rank++;
+            if(rank > limit) break;
+            position++;
 
             int docId = entry.getKey();
             double similarity = entry.getValue();
@@ -334,22 +333,22 @@ public class Vector {
                 Document doc = indexReader.storedFields().document(docId);
                 String text = doc.get("text");
                 if (text.equals(answer)){
-//                    System.out.println("Found!!!");
-//                    System.out.println(text);
                     System.out.println(similarity + ": " + doc.get("text"));
                     break;
                 }
                 // TODO: Recover this line
                 System.out.println(similarity + ": " + doc.get("text"));
-                counter++;
+                rank++;
+                writeResult(Integer.toString(query.getId()), Integer.toString(docId),
+                        rank, similarity, "Keywords: " + query.getText().substring(0, 5) + "...");
             } catch (IOException e) {
                 throw new RuntimeException("There's a low-level IO error");
             }
         }
-        if (rank >= limit){
+        if (position >= limit){
             System.out.println("Not found within the limit");
         }else{
-            System.out.println("Found in rank: " + rank);
+            System.out.println("Found in position: " + position);
         }
         if(ifClose){
             closeAll();
@@ -367,6 +366,7 @@ public class Vector {
             // Locked if the reader not yet reach the query with id = 1
             boolean lock = false;
             Map<Integer, Map<String, Double>> dv = buildDocumentVector("text");
+            long start = System.currentTimeMillis();
             while((line = bufferedReader.readLine()) != null){
                 JsonNode jsonNode = mapper.readTree(line);
                 // Store the current id
@@ -380,9 +380,12 @@ public class Vector {
                     Querry query = new Querry(id,
                             jsonNode.get("text").toString());
                     // Run each query in the queries.json
-                    runSingleQuery(query, dv, 5, false);
+                    runSingleQuery(query, dv, 100, false);
                 }
             }
+            long end = System.currentTimeMillis();
+            long totalTime = end - start;
+            System.out.println("Time used to write the results: " + totalTime / 1000 + " seconds");
         } catch (IOException e) {
             throw new RuntimeException("Error to open buffered reader");
         }finally {
@@ -458,15 +461,14 @@ public class Vector {
         }
     }
 
-    /**
-     * Close all the resource
-     */
-    public void closeAll(){
+    public void writeResult(String queryID, String docID, int rank, double score, String runName){
         try{
-            this.indexReader.close();
-            this.analyzer.close();
+            writer.write("query_id\t" + "Q0\t" + "doc_id\t" + "rank\t" + "score\t" + "tag");
+            writer.newLine();
+            writer.write(queryID + "\t" + "Q0\t" + docID + "\t" + rank+"\t" + score + "\t" + runName + "\n");
+            writer.newLine();
         }catch (IOException e){
-            throw new RuntimeException("Unable to close the reader");
+            System.out.println("Something wrong with the writer");
         }
     }
 
@@ -490,6 +492,29 @@ public class Vector {
                     });
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * Close all the resource
+     */
+    public void closeAll() {
+        try {
+            this.indexReader.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to close indexReader", e);
+        }
+
+        try {
+            this.analyzer.close();
+        } catch (Exception e) {
+            throw new RuntimeException("Unable to close analyzer", e);
+        }
+
+        try {
+            this.writer.close();
+        } catch (IOException e) {
+            throw new RuntimeException("Unable to close writer", e);
         }
     }
 
