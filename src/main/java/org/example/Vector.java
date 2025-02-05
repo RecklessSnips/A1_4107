@@ -345,8 +345,10 @@ public class Vector {
                 // TODO: Recover this line
                 System.out.println(similarity + ": " + doc.get("text"));
                 rank++;
+                int tmp = rank;
+                tmp--;
                 writeResult(Integer.toString(query.getId()), Integer.toString(docId),
-                        rank, similarity, "Keywords: " + query.getText().substring(0, 5) + "...");
+                        tmp, similarity, "Keywords: " + query.getText().substring(0, 5) + "...");
             } catch (IOException e) {
                 throw new RuntimeException("There's a low-level IO error");
             }
