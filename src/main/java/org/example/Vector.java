@@ -323,12 +323,6 @@ public class Vector {
         int position = 0;
         // Sorted similarities
         LinkedHashMap<Integer, Double> similarities = computeCosineSimilarity(dv, qv);
-        try{
-            writer.write("query_id\t" + "Q0\t" + "doc_id\t" + "rank\t" + "score\t" + "tag");
-            writer.newLine();
-        }catch (IOException e){
-            System.out.println("Writer cannot write into files");
-        }
         for (Map.Entry<Integer, Double> entry : similarities.entrySet()){
             if(rank > limit) break;
             position++;
@@ -375,6 +369,12 @@ public class Vector {
             boolean lock = false;
             Map<Integer, Map<String, Double>> dv = buildDocumentVector("text");
             long start = System.currentTimeMillis();
+            try{
+                writer.write("query_id\t" + "Q0\t" + "doc_id\t" + "rank\t" + "score\t" + "tag");
+                writer.newLine();
+            }catch (IOException e){
+                System.out.println("Writer cannot write into files");
+            }
             while((line = bufferedReader.readLine()) != null){
                 JsonNode jsonNode = mapper.readTree(line);
                 // Store the current id
