@@ -335,17 +335,17 @@ public class Vector {
             try {
                 Document doc = indexReader.storedFields().document(docId);
                 String text = doc.get("text");
-                if (text.equals(answer)){
-                    System.out.println(similarity + ": " + doc.get("text"));
-                    break;
-                }
+//                if (text.equals(answer)){
+//                    System.out.println(similarity + ": " + doc.get("text"));
+//                    break;
+//                }
                 // TODO: Recover this line
-                System.out.println(similarity + ": " + doc.get("text"));
+                System.out.println(similarity + ": " + text);
                 rank++;
                 int tmp = rank;
                 tmp--;
 
-                writeResult(Integer.toString(query.getId()), corpusList.get(doc.get("text")),
+                writeResult(Integer.toString(query.getId()), corpusList.get(text),
                         tmp, similarity, "Keywords: " + query.getText().substring(0, 5) + "...");
             } catch (IOException e) {
                 throw new RuntimeException("There's a low-level IO error");
