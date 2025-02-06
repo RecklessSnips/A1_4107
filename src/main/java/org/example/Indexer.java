@@ -16,8 +16,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class Indexer {
 
@@ -55,8 +54,9 @@ public class Indexer {
         }
     }
 
-    public void index(){
+    public Map<String, String> index(){
         // 1. Prepare documents
+        Map<String, String> corpuseList = new HashMap();
         try {
             // Read each line
             String line;
@@ -75,8 +75,12 @@ public class Indexer {
 
                 // Retrieve
                 JsonNode jsonNode = objectMapper.readTree(line);
+
+                String corpusID = jsonNode.get("_id").toString();
+                String corpusText = jsonNode.get("text").asText();
+                corpuseList.put(corpusText, corpusID);
                 // Convert each field into Lucene's field
-                document.add(new StringField("id", jsonNode.get("_id").toString(), Field.Store.YES));
+                document.add(new StringField("id", corpusID, Field.Store.YES));
                 // Let title and text field share the same tokenizer
                 // TODO: 测试组合查询
                 /*
@@ -89,14 +93,16 @@ public class Indexer {
 //                                + " "
 //                                + jsonNode.get("text").asText(), customType));
                 document.add(new Field("title", jsonNode.get("title").asText(), customType));
-                document.add(new Field("text", jsonNode.get("text").asText(), customType));
+                document.add(new Field("text", corpusText, customType));
                 document.add(new TextField("metadata", jsonNode.get("metadata").asText(), Field.Store.YES));
 
                 // 3. Indexing
                 writer.addDocument(document);
             }
+            return corpuseList;
         }catch (IOException e){
             e.printStackTrace();
+            return Collections.emptyMap();
         }finally {
             closeAll();
         }

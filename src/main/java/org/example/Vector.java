@@ -30,6 +30,8 @@ public class Vector {
     // Same analyzer as the Indexer class
     private Analyzer analyzer;
 
+    private Map<String, String> corpusList;
+
     // Store the document vector
     private Map<Integer, Map<String, Double>> documentVector;
 
@@ -42,12 +44,13 @@ public class Vector {
     // Writer
     private BufferedWriter writer;
 
-    public Vector(Analyzer analyzer){
+    public Vector(Analyzer analyzer, Map<String, String> corpusList){
         initialize();
         documentVector = new HashMap<>();
         queryVector = new HashMap<>();
         TOTALDOCS = indexReader.numDocs();
         this.analyzer = analyzer;
+        this.corpusList = corpusList;
     }
 
     public void initialize(){
@@ -341,7 +344,8 @@ public class Vector {
                 rank++;
                 int tmp = rank;
                 tmp--;
-                writeResult(Integer.toString(query.getId()), Integer.toString(docId),
+
+                writeResult(Integer.toString(query.getId()), corpusList.get(doc.get("text")),
                         tmp, similarity, "Keywords: " + query.getText().substring(0, 5) + "...");
             } catch (IOException e) {
                 throw new RuntimeException("There's a low-level IO error");
@@ -536,8 +540,8 @@ public class Vector {
          */
         deleteIndices();
         Indexer indexer = new Indexer();
-        indexer.index();
-        Vector vector = new Vector(indexer.getAnalyzer());
+        Map<String, String> list = indexer.index();
+        Vector vector = new Vector(indexer.getAnalyzer(), list);
 
         Map<Integer, Map<String, Double>> dv = vector.buildDocumentVector("text");
 //        String query = "0-dimensional biomaterials show inductive properties.";
