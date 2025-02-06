@@ -99,36 +99,23 @@ public class Vector {
 
             // Instantiate the map to store each term's tf_idf
             Map<String, Double> tfIdfMap = new HashMap<>();
-            // text, title
-//            for(String names: strings){
-//                Terms terms = strings.terms(names);
-//                Terms terms = strings.terms("text");
-                TermsEnum iterator = terms.iterator();
-                // Loop each term
-                while (iterator.next() != null){
-                    // Get the text
-                    String s = iterator.term().utf8ToString();
-                    // Calculate the term frequency tf(t)
-                    long frequency = iterator.totalTermFreq();
-                    // TODO: To remove this line
-                    double tf = similarity.tf(frequency);
-                    // Calculate the document frequency Df(t)
-                    int df = indexReader.docFreq(new Term(field, s));
-                    // Calculate idf
-                    double idf = similarity.idf(df, TOTALDOCS);
-//                    double idf = Math.log10((double) TOTALDOCS / (df + 1e-12));
+            TermsEnum iterator = terms.iterator();
+            // Loop each term
+            while (iterator.next() != null){
+                // Get the text
+                String s = iterator.term().utf8ToString();
+                // Calculate the term frequency tf(t)
+                long frequency = iterator.totalTermFreq();
+                // Calculate the document frequency Df(t)
+                int df = indexReader.docFreq(new Term(field, s));
+                // Calculate idf
+                double idf = similarity.idf(df, TOTALDOCS);
+                // Calculate tf_idf
+                double tf_idf = frequency * idf;
 
-//                    double tf_idf = tf * idf;
-                    // Calculate tf_idf
-                    double tf_idf = frequency * idf;
-//                    System.out.println("tf: " + s + " is: " + tf);
-//                    System.out.println("idf: " + s + " is: " + idf);
-//                    System.out.println("tf_idf for " + s + " is: " + tf_idf + " in the document: " + docID);
-
-                    // Create Document vector, later will put into the document vector map
-                    tfIdfMap.put(s, tf_idf);
-                }
-//            }
+                // Create Document vector, later will put into the document vector map
+                tfIdfMap.put(s, tf_idf);
+            }
 
             // Optimization: normalize the vector so the term stays informative in long text
             Map<String, Double> stringDoubleMap = normalizeVector(tfIdfMap);
@@ -139,17 +126,6 @@ public class Vector {
         }catch (IOException e){
             return Collections.emptyMap();
         }
-    }
-
-    // TODO: We can remove this method
-    private int countOccurrence(String query, String target){
-        int counter = 0;
-        int index = query.indexOf(target);
-        while (index != -1){
-            counter++;
-            index = query.indexOf(target, index + target.length());
-        }
-        return counter;
     }
 
     /**
@@ -168,17 +144,11 @@ public class Vector {
             for(String token: tokens){
                 // Calculate tf(t, q)
                 long frequency = tokens.stream().filter(t -> t.equals(token)).count();
-//                System.out.println(countOccurrence(query, token));
-//                System.out.println(query.split(" ").length);
-//                double frequency = (double) countOccurrence(query, token) / query.split(" ").length;
-//                double tf = similarity.tf(frequency);
 
                 // Calculate Df(t)
                 int df = indexReader.docFreq(new Term(field, token));
                 // Calculate idf
                 double idf = similarity.idf(df, TOTALDOCS);
-//                double idf = Math.log10((double) TOTALDOCS / (df + 1e-12));
-//                double tf_idf = tf * idf;
 
                 // Calculate tf_idf
                 double tf_idf = (frequency) * idf;
@@ -280,16 +250,9 @@ public class Vector {
             euclideanLength_document += Math.pow(normalized_tfidf, 2);
         }
 
-        // // Euclidean length
+        // Euclidean length
         double euclideanLength = Math.sqrt(euclideanLength_query)
                                 * Math.sqrt(euclideanLength_document);
-//        if (dotProduct != 0) {
-//            System.out.println("Dot: " + dotProduct);
-//            System.out.println("Query Euc: " + euclideanLength_query);
-//            System.out.println("Doc Euc: " + euclideanLength_document);
-//            System.out.println("Length: " + euclideanLength);
-//            System.out.println();
-//        }
 
         // Cosine Similarity
         return dotProduct / euclideanLength;
@@ -336,11 +299,9 @@ public class Vector {
                 Document doc = indexReader.storedFields().document(docId);
                 String text = doc.get("text");
 //                if (text.equals(answer)){
-//                    System.out.println(similarity + ": " + doc.get("text"));
+//                    System.out.println(similarity + ": " + text);
 //                    break;
 //                }
-                // TODO: Recover this line
-                System.out.println(similarity + ": " + text);
                 rank++;
                 int tmp = rank;
                 tmp--;
@@ -534,22 +495,12 @@ public class Vector {
         2. Instantiate the indexer and construct the index first: indexer.index();
         3. Build the vector with indexer's analyzer
         4.
-            a: To run a single query, build the document vector first and prepare the query,
-                then call the runSingleQuery(new Querry(0, query), ...)
-            b: To run all the queries from the queries.json, run the runQueries() directly
+           To run all the queries from the queries.json, run the runQueries() directly
          */
         deleteIndices();
         Indexer indexer = new Indexer();
         Map<String, String> list = indexer.index();
         Vector vector = new Vector(indexer.getAnalyzer(), list);
-
-        Map<Integer, Map<String, Double>> dv = vector.buildDocumentVector("text");
-//        String query = "0-dimensional biomaterials show inductive properties.";
-//        String query = "1,000 genomes project enables mapping of genetic sequence variation consisting of rare variants with larger penetrance effects than common variants.";
-//        String query = "1/2000 in UK have abnormal PrP positivity.";
-        String query = "5% of perinatal mortality is due to low birth weight.";
-
-//        vector.runSingleQuery(new Querry(0, query), dv, 20, true);
         vector.runQueries();
     }
 }

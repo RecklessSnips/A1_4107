@@ -78,20 +78,11 @@ public class Indexer {
 
                 String corpusID = jsonNode.get("_id").toString();
                 String corpusText = jsonNode.get("text").asText();
+                // For later write to the output file
                 corpuseList.put(corpusText, corpusID);
                 // Convert each field into Lucene's field
                 document.add(new StringField("id", corpusID, Field.Store.YES));
                 // Let title and text field share the same tokenizer
-                // TODO: 测试组合查询
-                /*
-                public void search(String queryText) throws IOException {
-                    Query titleQuery = new TermQuery(new Term("title", queryText));
-                    Query textQuery = new TermQuery(new Term("text", queryText));
-                 */
-//                document.add(new Field("content",
-//                        jsonNode.get("title").asText()
-//                                + " "
-//                                + jsonNode.get("text").asText(), customType));
                 document.add(new Field("title", jsonNode.get("title").asText(), customType));
                 document.add(new Field("text", corpusText, customType));
                 document.add(new TextField("metadata", jsonNode.get("metadata").asText(), Field.Store.YES));
