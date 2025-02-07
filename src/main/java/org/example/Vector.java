@@ -96,7 +96,9 @@ public class Vector {
             TermVectors termVectors = indexReader.termVectors();
             // Get all the terms in this document
             Terms terms = termVectors.get(docID, field);
-
+            if(terms == null){
+                return Collections.emptyMap();
+            }
             // Instantiate the map to store each term's tf_idf
             Map<String, Double> tfIdfMap = new HashMap<>();
             TermsEnum iterator = terms.iterator();
@@ -126,6 +128,18 @@ public class Vector {
         }catch (IOException e){
             return Collections.emptyMap();
         }
+    }
+
+    private Map<String, Double> buildCombinedDocumentVector(Map<String, Double> title,
+                                                            Map<String, Double> text){
+        Map<String, Double> combined = new HashMap<>(title);
+        // Add terms from title
+        for(Map.Entry<String, Double> entry : text.entrySet()){
+            String term = entry.getKey();
+            Double tf_idf = entry.getValue();
+            combined.merge(term, tf_idf, (oldV, newV) -> Double.sum(oldV, newV));
+        }
+        return combined;
     }
 
     /**
@@ -266,9 +280,9 @@ public class Vector {
      * @param ifClose false when running multiple queries together
      */
     public void runSingleQuery(Querry query, Map<Integer, Map<String, Double>> dv,
-                               int limit, boolean ifClose){
+                               int limit, String field, boolean ifClose){
         // Build the qv for the current query
-        Map<String, Double> qv = buildQueryVector(query.getText(), "text");
+        Map<String, Double> qv = buildQueryVector(query.getText(), field);
         // Fetch the answer map from the csv file
         Map<String, String> answerSet = fetchAnswer();
         // Get the answer id for the current query
@@ -287,6 +301,7 @@ public class Vector {
          indicating the position of the answer in the sorted list displayed from highest to lowest similarity score.
          */
         int position = 0;
+        boolean ifFound = false;
         // Sorted similarities
         LinkedHashMap<Integer, Double> similarities = computeCosineSimilarity(dv, qv);
         for (Map.Entry<Integer, Double> entry : similarities.entrySet()){
@@ -298,23 +313,24 @@ public class Vector {
             try {
                 Document doc = indexReader.storedFields().document(docId);
                 String text = doc.get("text");
-//                if (text.equals(answer)){
-//                    System.out.println(similarity + ": " + text);
+                if (text.equals(answer)){
+                    System.out.println(similarity + ": " + text);
+                    ifFound = true;
+//                    System.out.println("Found!!!");
 //                    break;
-//                }
+                }
                 rank++;
                 int tmp = rank;
                 tmp--;
-
                 writeResult(Integer.toString(query.getId()), corpusList.get(text),
                         tmp, similarity, "Keywords: " + query.getText().substring(0, 5) + "...");
             } catch (IOException e) {
                 throw new RuntimeException("There's a low-level IO error");
             }
         }
-        if (position >= limit){
-            System.out.println("Not found within the limit");
-        }else{
+        if (position >= limit || position >= similarities.size()){
+            System.out.println("Not found within the limit: " + limit);
+        }else if (ifFound){
             System.out.println("Found in position: " + position);
         }
         if(ifClose){
@@ -325,14 +341,14 @@ public class Vector {
     /**
      * Method to run all the queries form the corpus
      */
-    public void runQueries(){
+    public void runQueriesOnField(String field){
         // Prepare the reader to read queries.json
         try (BufferedReader bufferedReader = Files.newBufferedReader(Paths.get("src/main/java/queries.jsonl.json"))){
             ObjectMapper mapper = new ObjectMapper();
             String line;
             // Locked if the reader not yet reach the query with id = 1
             boolean lock = false;
-            Map<Integer, Map<String, Double>> dv = buildDocumentVector("text");
+            Map<Integer, Map<String, Double>> dv = buildDocumentVector(field);
             long start = System.currentTimeMillis();
             try{
                 writer.write("query_id\t" + "Q0\t" + "doc_id\t" + "rank\t" + "score\t" + "tag");
@@ -353,7 +369,7 @@ public class Vector {
                     Querry query = new Querry(id,
                             jsonNode.get("text").toString());
                     // Run each query in the queries.json
-                    runSingleQuery(query, dv, 100, false);
+                    runSingleQuery(query, dv, 100, field, false);
                 }
             }
             long end = System.currentTimeMillis();
@@ -501,6 +517,6 @@ public class Vector {
         Indexer indexer = new Indexer();
         Map<String, String> list = indexer.index();
         Vector vector = new Vector(indexer.getAnalyzer(), list);
-        vector.runQueries();
+        vector.runQueriesOnField("combined");
     }
 }
