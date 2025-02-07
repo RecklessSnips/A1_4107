@@ -85,6 +85,8 @@ public class Indexer {
                 // Let title and text field share the same tokenizer
                 document.add(new Field("title", jsonNode.get("title").asText(), customType));
                 document.add(new Field("text", corpusText, customType));
+                String combinedContent = jsonNode.get("title").asText() + " " + corpusText;
+                document.add(new Field("combined", combinedContent, customType));
                 document.add(new TextField("metadata", jsonNode.get("metadata").asText(), Field.Store.YES));
 
                 // 3. Indexing
