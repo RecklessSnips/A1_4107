@@ -130,18 +130,6 @@ public class Vector {
         }
     }
 
-    private Map<String, Double> buildCombinedDocumentVector(Map<String, Double> title,
-                                                            Map<String, Double> text){
-        Map<String, Double> combined = new HashMap<>(title);
-        // Add terms from title
-        for(Map.Entry<String, Double> entry : text.entrySet()){
-            String term = entry.getKey();
-            Double tf_idf = entry.getValue();
-            combined.merge(term, tf_idf, (oldV, newV) -> Double.sum(oldV, newV));
-        }
-        return combined;
-    }
-
     /**
      * Method to build a query vector
      * @param query The query to be tokenized
